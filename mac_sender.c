@@ -103,7 +103,7 @@ void MacSender(void *argument){
 									break;
 								
 								case DATA_IND:
-									
+									//TODO
 								messageRead = true;
 									
 									break;
@@ -131,11 +131,13 @@ void MacSender(void *argument){
 				break;
 			
 			case DATABACK:
+				queueMsgPhyS.type = TO_PHY;			// message type
+				queueMsgPhyS.anyPtr = &(currentToken.token_data);					// pointer to token
 				retCode = osMessageQueuePut(
 					queue_phyS_id,
-					&queueMsgMacS,
+					&queueMsgPhyS,
 					osPriorityNormal,
-					0);
+					osWaitForever);
 				CheckRetCode(retCode,__LINE__,__FILE__,CONTINUE);
 				break;
 			
