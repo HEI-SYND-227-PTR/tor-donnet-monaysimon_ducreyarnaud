@@ -14,6 +14,8 @@ typedef union tokenType_{
 	uint8_t token_data[MAX_STATION_NB + 1];
 }tokenType;
 
+tokenType currentToken;
+
 
 const osMessageQueueAttr_t queue_mac_buffer_attr = {
 	.name = "MAC_BUFFER"
@@ -55,9 +57,6 @@ void MacSender(void *argument){
 				
 				queueMsgPhyS.type = TO_PHY;			// message type
 				queueMsgPhyS.anyPtr = &(token.token_data);					// pointer to token
-				//------------------------------------------------------------------------
-				// QUEUE SEND	(send TO_PHY to PHY sender)
-				//------------------------------------------------------------------------
 				retCode = osMessageQueuePut(
 					queue_phyS_id,
 					&queueMsgPhyS,
@@ -80,11 +79,64 @@ void MacSender(void *argument){
 				break;
 			
 			case TOKEN:
-					
+			{		
+				currentToken = *((tokenType*)(queueMsgMacS.anyPtr)); // save the current token
+				
+				
+				struct queueMsg_t bufferedMessage;					// message in fifo
+				bool messageRead = false;
+				while(!messageRead){
+					retCode = osMessageQueueGet(queue_mac_buffer_id, &bufferedMessage, NULL, 0);
+					if(retCode == osOK){
+							switch(bufferedMessage.type){
+								
+								case START:
+										gTokenInterface.connected = true;
+										gTokenInterface.station_list[MYADDRESS] = ((1 << CHAT_SAPI) | (1 << TIME_SAPI)); // set my services
+										currentToken.stations[MYADDRESS-1] = ((1 << CHAT_SAPI) | (1 << TIME_SAPI));
+									break;
+								
+								case STOP:
+									gTokenInterface.connected = true;
+									gTokenInterface.station_list[MYADDRESS] = ((0 << CHAT_SAPI) | (1 << TIME_SAPI)); // set my services
+									currentToken.stations[MYADDRESS-1] = ((0 << CHAT_SAPI) | (1 << TIME_SAPI));
+									break;
+								
+								case DATA_IND:
+									
+								messageRead = true;
+									
+									break;
+								
+								
+								default:
+									break;
+							}
+					}
+					else{
+						queueMsgPhyS.type = TO_PHY;			// message type
+						queueMsgPhyS.anyPtr = &(currentToken.token_data);					// pointer to token
+						retCode = osMessageQueuePut(
+							queue_phyS_id,
+							&queueMsgPhyS,
+							osPriorityNormal,
+							osWaitForever);
+						CheckRetCode(retCode,__LINE__,__FILE__,CONTINUE);
+						
+						messageRead = true;
+					}
+				}
+	
+			}
 				break;
 			
 			case DATABACK:
-				
+				retCode = osMessageQueuePut(
+					queue_phyS_id,
+					&queueMsgMacS,
+					osPriorityNormal,
+					0);
+				CheckRetCode(retCode,__LINE__,__FILE__,CONTINUE);
 				break;
 			
 			default:
