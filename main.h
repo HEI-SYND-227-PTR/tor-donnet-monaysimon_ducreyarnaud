@@ -17,7 +17,7 @@
 // Constants to change the system behavior
 //--------------------------------------------------------------------------------
 #define DEBUG_MODE				1					// mode is physical line (0) or debug (1)
-#define MYADDRESS   			3					// your address choice (table number)
+#define MYADDRESS   			12					// your address choice (table number)
 #define MAX_BLOCK_SIZE 		100				// size max for a frame
 
 //--------------------------------------------------------------------------------
@@ -28,6 +28,7 @@
 #define BROADCAST_ADDRESS	0x0F			// broadcast address
 #define TOKEN_TAG					0xFF			// tag of tokenring frame
 #define TOKENSIZE					19				// size of a token frame
+#define MAX_STATION_NB		15				// max number of station in the ring
 #define STX 							0x02			// any frame start char
 #define ETX								0x03			// any frame end char
 #define CONTINUE					0x0				// for check return code halt
@@ -73,7 +74,7 @@ struct TOKENINTERFACE
 	uint32_t	debugAddress;					///< current debug address
 	bool_t		debugMsgToSend;				///< did debug have to send a message
 	uint32_t	destinationAddress;		///< current destination address
-	uint8_t		station_list[15];			///< 0 to 15
+	uint8_t		station_list[MAX_STATION_NB];			///< 0 to 15
 };
 extern struct TOKENINTERFACE gTokenInterface;
 
