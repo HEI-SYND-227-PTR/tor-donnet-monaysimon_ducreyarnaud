@@ -5,8 +5,45 @@
 #include "main.h"
 #include "cmsis_os2.h" 
 
+
+typedef union msgType_{
+	struct __attribute__((__packed__)){
+		struct control_{
+			unsigned blank1 : 1;
+			unsigned src : 4;
+			unsigned srcSapi : 3;
+			unsigned blank2 : 1;
+			unsigned dest : 4;
+			unsigned destSapi : 3;
+		}control;
+		uint8_t length;
+		uint8_t data[];
+	};
+	uint8_t *msg_frame;
+}msgType;
+
+typedef union msgStatus_{
+	struct __attribute__((__packed__)){
+		unsigned checksum : 6;
+		unsigned read : 1;
+		unsigned ack : 1;
+	};
+	uint8_t status;
+}msgStatus;
+
+
+
+
 bool isToken(uint8_t* msg){
 	return (msg[0] == TOKEN_TAG);
+}
+
+bool processStatus(msgType* msg, bool setRead){
+	uint8_t sum;
+	
+	for(uint8_t i = 0; i < (msg->length + 2 + 1); i++){
+		sum += msg->msg_frame[i]; // we were here, finish this func.
+	}
 }
 
 
@@ -38,6 +75,19 @@ void MacReceiver(void *argument)
 				CheckRetCode(retCode,__LINE__,__FILE__,CONTINUE);
 			}
 			else{
+				// is message
+				msgType msgRecieved;
+				msgRecieved.msg_frame = *(uint8_t**)(queueMsgMacR.anyPtr);
+				
+				if(msgRecieved.control.dest == BROADCAST_ADDRESS){
+					// broadcast
+				}
+				else if(msgRecieved.control.dest == MYADDRESS){
+					// message to us
+				}
+				else{
+					// send message directly to phy
+				}
 				
 			}
 			
