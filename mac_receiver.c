@@ -41,7 +41,7 @@ bool processChecksum(msgType* msg){
 	uint8_t sum = 0;
 	
 	for(uint8_t i = 0; i < (msg->length + 2 + 1); i++){
-		sum += ((uint8_t*)msg)[i]; // we were here, finish this func.
+		sum += ((uint8_t*)msg)[i]; 
 	}
 	
 	msgStatus temp;
