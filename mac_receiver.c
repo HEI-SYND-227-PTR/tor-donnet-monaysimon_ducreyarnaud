@@ -6,27 +6,26 @@
 #include "cmsis_os2.h" 
 
 
-typedef union msgType_{
-	struct __attribute__((__packed__)){
-		struct control_{
-			unsigned blank1 : 1;
-			unsigned src : 4;
+typedef struct __attribute__((__packed__)) msgType_{
+		struct __attribute__((__packed__)) control_{
 			unsigned srcSapi : 3;
-			unsigned blank2 : 1;
-			unsigned dest : 4;
+			unsigned src : 4;
+			unsigned blank1 : 1;
 			unsigned destSapi : 3;
-		}control;
+			unsigned dest : 4;
+			unsigned blank2 : 1;
+						
+		}__packed control; 
 		uint8_t length;
 		uint8_t data[];
-	};
-	uint8_t *msg_frame;//not sure about it
 }msgType;
+
 
 typedef union msgStatus_{
 	struct __attribute__((__packed__)){
-		unsigned checksum : 6;
-		unsigned read : 1;
 		unsigned ack : 1;
+		unsigned read : 1;
+		unsigned checksum : 6;
 	};
 	uint8_t status;
 }msgStatus;
@@ -39,13 +38,16 @@ bool isToken(uint8_t* msg){
 }
 
 bool processChecksum(msgType* msg){
-	uint8_t sum;
+	uint8_t sum = 0;
 	
 	for(uint8_t i = 0; i < (msg->length + 2 + 1); i++){
-		sum += msg->msg_frame[i]; // we were here, finish this func.
+		sum += ((uint8_t*)msg)[i]; // we were here, finish this func.
 	}
 	
-	return (sum == ((msgStatus)(msg->data[msg->length])).checksum);
+	msgStatus temp;
+	temp.status = msg->data[msg->length];
+	
+	return ((sum & 0x3F) == temp.checksum);
 }
 
 
@@ -78,24 +80,24 @@ void MacReceiver(void *argument)
 			else{
 								
 				// is message
-				msgType msgRecieved;
-				msgRecieved.msg_frame = *(uint8_t**)(queueMsgMacR.anyPtr);
+				msgType* msgRecieved;
+				msgRecieved = queueMsgMacR.anyPtr;
 				
-				if(msgRecieved.control.dest == BROADCAST_ADDRESS){
-					if(processChecksum(&msgRecieved)){
+				if(msgRecieved->control.dest == BROADCAST_ADDRESS){
+					if(processChecksum(msgRecieved)){
 						// broadcast
-						if(msgRecieved.control.destSapi == TIME_SAPI){
+						if(msgRecieved->control.destSapi == TIME_SAPI){
 							
-							uint8_t data[msgRecieved.length+1]; // create msg to send
-							for(uint8_t i = 0; i < msgRecieved.length; i++){
-								data[i] = msgRecieved.data[i];
+							uint8_t * tempData = osMemoryPoolAlloc(memPool, 0);
+							for(uint8_t i = 0; i < msgRecieved->length; i++){
+								tempData[i] = msgRecieved->data[i];
 							}
-							data[msgRecieved.length] = '\0';
+							tempData[msgRecieved->length] = '\0';
 							
 							queueMsgToSend.type = DATA_IND; // create queue msg
-							queueMsgToSend.anyPtr = data;	
-							queueMsgToSend.addr = msgRecieved.control.src;
-							queueMsgToSend.sapi = msgRecieved.control.srcSapi;
+							queueMsgToSend.anyPtr = tempData;	
+							queueMsgToSend.addr = msgRecieved->control.src;
+							queueMsgToSend.sapi = msgRecieved->control.srcSapi;
 							
 							retCode = osMessageQueuePut( // send msg
 								queue_timeR_id,
@@ -105,19 +107,19 @@ void MacReceiver(void *argument)
 							
 							CheckRetCode(retCode,__LINE__,__FILE__,CONTINUE); // check if no problem
 						}
-						else if(msgRecieved.control.destSapi == CHAT_SAPI){
+						else if(msgRecieved->control.destSapi == CHAT_SAPI){
 							if(gTokenInterface.connected){
 								
-								uint8_t data[msgRecieved.length+1]; // create msg to send
-							for(uint8_t i = 0; i < msgRecieved.length; i++){
-								data[i] = msgRecieved.data[i];
+								uint8_t * tempData = osMemoryPoolAlloc(memPool, 0);
+							for(uint8_t i = 0; i < msgRecieved->length; i++){
+								tempData[i] = msgRecieved->data[i];
 							}
-							data[msgRecieved.length] = '\0';
+							tempData[msgRecieved->length] = '\0';
 							
 							queueMsgToSend.type = DATA_IND; // create queue msg
-							queueMsgToSend.anyPtr = data;	
-							queueMsgToSend.addr = msgRecieved.control.src;
-							queueMsgToSend.sapi = msgRecieved.control.srcSapi;
+							queueMsgToSend.anyPtr = tempData;	
+							queueMsgToSend.addr = msgRecieved->control.src;
+							queueMsgToSend.sapi = msgRecieved->control.srcSapi;
 							
 							retCode = osMessageQueuePut( // send msg
 								queue_chatR_id,
@@ -132,23 +134,28 @@ void MacReceiver(void *argument)
 						}
 					}
 				}
-				else if(msgRecieved.control.dest == MYADDRESS){
-					if(processChecksum(&msgRecieved)){
-						msgRecieved.data[msgRecieved.length] |= 0b1; // ACK <= 1
+				else if(msgRecieved->control.dest == MYADDRESS){
+					
+					if(((1 << msgRecieved->control.destSapi) & gTokenInterface.station_list[MYADDRESS])>0){
+						msgRecieved->data[msgRecieved->length] |= gTokenInterface.connected << 1; // READ <= connected
+					}
+					
+					
+					
+					if(processChecksum(msgRecieved)){
+						msgRecieved->data[msgRecieved->length] |= 1; // ACK <= 1
 						// message to us
-						if(msgRecieved.control.destSapi == TIME_SAPI){
-							msgRecieved.data[msgRecieved.length] |= 0b10; // READ <= 1
-							
-							uint8_t data[msgRecieved.length+1]; // create msg to send
-							for(uint8_t i = 0; i < msgRecieved.length; i++){
-								data[i] = msgRecieved.data[i];
+						if(msgRecieved->control.destSapi == TIME_SAPI){							
+							uint8_t * tempData = osMemoryPoolAlloc(memPool, 0);
+							for(uint8_t i = 0; i < msgRecieved->length; i++){
+								tempData[i] = msgRecieved->data[i];
 							}
-							data[msgRecieved.length] = '\0';
+							tempData[msgRecieved->length] = '\0';
 							
 							queueMsgToSend.type = DATA_IND; // create queue msg
-							queueMsgToSend.anyPtr = data;	
-							queueMsgToSend.addr = msgRecieved.control.src;
-							queueMsgToSend.sapi = msgRecieved.control.srcSapi;
+							queueMsgToSend.anyPtr = tempData;	
+							queueMsgToSend.addr = msgRecieved->control.src;
+							queueMsgToSend.sapi = msgRecieved->control.srcSapi;
 							
 							retCode = osMessageQueuePut( // send msg
 								queue_timeR_id,
@@ -158,41 +165,41 @@ void MacReceiver(void *argument)
 							
 							CheckRetCode(retCode,__LINE__,__FILE__,CONTINUE); // check if no problem
 						}
-						else if(msgRecieved.control.destSapi == CHAT_SAPI){
-							if(gTokenInterface.connected){
-								msgRecieved.data[msgRecieved.length] |= 0b10; // READ <= 1
+						else if(msgRecieved->control.destSapi == CHAT_SAPI){
+							if(gTokenInterface.connected){								
 								
-								uint8_t data[msgRecieved.length+1]; // create msg to send
-							for(uint8_t i = 0; i < msgRecieved.length; i++){
-								data[i] = msgRecieved.data[i];
-							}
-							data[msgRecieved.length] = '\0';
-							
-							queueMsgToSend.type = DATA_IND; // create queue msg
-							queueMsgToSend.anyPtr = data;	
-							queueMsgToSend.addr = msgRecieved.control.src;
-							queueMsgToSend.sapi = msgRecieved.control.srcSapi;
-							
-							retCode = osMessageQueuePut( // send msg
-								queue_chatR_id,
-								&queueMsgToSend,
-								osPriorityNormal,
-								osWaitForever);
-							
-							CheckRetCode(retCode,__LINE__,__FILE__,CONTINUE); // check if no problem
+								uint8_t * tempData = osMemoryPoolAlloc(memPool, 0);
+								
+								for(uint8_t i = 0; i < msgRecieved->length; i++){
+									tempData[i] = msgRecieved->data[i];
+								}
+								tempData[msgRecieved->length] = '\0';
+								
+								queueMsgToSend.type = DATA_IND; // create queue msg
+								queueMsgToSend.anyPtr = tempData;	
+								queueMsgToSend.addr = msgRecieved->control.src;
+								queueMsgToSend.sapi = msgRecieved->control.srcSapi;
+								
+								retCode = osMessageQueuePut( // send msg
+									queue_chatR_id,
+									&queueMsgToSend,
+									osPriorityNormal,
+									osWaitForever);
+								
+								CheckRetCode(retCode,__LINE__,__FILE__,CONTINUE); // check if no problem
 							}
 						}
 					}
 				}
 				
 				
-				if(msgRecieved.control.src == MYADDRESS){
+				if(msgRecieved->control.src == MYADDRESS){
 					// send databack
 								
 					queueMsgToSend.type = DATABACK; // create queue msg
-					queueMsgToSend.anyPtr = msgRecieved.msg_frame;	
-					queueMsgToSend.addr = msgRecieved.control.src;
-					queueMsgToSend.sapi = msgRecieved.control.srcSapi;
+					queueMsgToSend.anyPtr = msgRecieved;	
+					queueMsgToSend.addr = msgRecieved->control.src;
+					queueMsgToSend.sapi = msgRecieved->control.srcSapi;
 					
 					retCode = osMessageQueuePut( // send msg
 						queue_timeR_id,
@@ -206,7 +213,7 @@ void MacReceiver(void *argument)
 					// send to phy
 										
 					queueMsgToSend.type = TO_PHY; // create queue msg
-					queueMsgToSend.anyPtr = msgRecieved.msg_frame;	
+					queueMsgToSend.anyPtr = msgRecieved;	
 					
 					retCode = osMessageQueuePut( // send msg
 						queue_phyS_id,
