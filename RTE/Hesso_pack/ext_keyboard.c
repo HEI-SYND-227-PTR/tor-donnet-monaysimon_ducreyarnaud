@@ -28,7 +28,7 @@
 static SPI_HandleTypeDef keyboard;								// SPI keyboard handle
 uint8_t ext_kbChar;																// exported to global use
 uint8_t scan;
-static uint32_t newChar=0;												// internal flag
+static uint32_t volatile newChar=0;												// internal flag
 uint8_t release;
 uint8_t state;
 //------------------------------------------------------------------------------

@@ -340,9 +340,9 @@ uint32_t HAL_GetTick(void)
 //////////////////////////////////////////////////////////////////////////////////
 /// \brief Init all and start RTX5
 //////////////////////////////////////////////////////////////////////////////////
-int main(void)
+int main(void) 
 {
-	SystemClock_Config();
+	SystemClock_Config(); 
 
 	EventRecorderInitialize(EventRecordAll,0);
 	EventRecorderDisable(EventRecordAPI, 0xF1, 0xF1); // remove Kernel messages

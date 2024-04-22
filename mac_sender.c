@@ -94,13 +94,13 @@ void MacSender(void *argument){
 								case START:
 										gTokenInterface.connected = true;
 										gTokenInterface.station_list[MYADDRESS] = ((1 << CHAT_SAPI) | (1 << TIME_SAPI)); // set my services
-										currentToken.stations[MYADDRESS-1] = ((1 << CHAT_SAPI) | (1 << TIME_SAPI));
+										currentToken.stations[MYADDRESS-1] = gTokenInterface.station_list[MYADDRESS];
 									break;
 								
 								case STOP:
 									gTokenInterface.connected = false;
 									gTokenInterface.station_list[MYADDRESS] = ((0 << CHAT_SAPI) | (1 << TIME_SAPI)); // set my services
-									currentToken.stations[MYADDRESS-1] = ((0 << CHAT_SAPI) | (1 << TIME_SAPI));
+									currentToken.stations[MYADDRESS-1] = gTokenInterface.station_list[MYADDRESS];
 									break;
 								
 								case DATA_IND:
@@ -131,7 +131,7 @@ void MacSender(void *argument){
 			}
 				break;
 			
-			case DATABACK:
+			case DATABACK: // FAUX!
 				queueMsgPhyS.type = TO_PHY;			// message type
 				queueMsgPhyS.anyPtr = &(currentToken.token_data);					// pointer to token
 				retCode = osMessageQueuePut(
