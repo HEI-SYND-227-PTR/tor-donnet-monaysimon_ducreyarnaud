@@ -52,7 +52,8 @@ void MacSender(void *argument){
 				for(int i = 0; i<MAX_STATION_NB; i++){ // init all stations
 					token.stations[i]= 0x00;
 				}
-				token.stations[MYADDRESS-1] = ((1 << CHAT_SAPI) | (1 << TIME_SAPI)); // set my services				
+				gTokenInterface.station_list[MYADDRESS] = ((1 << CHAT_SAPI) | (1 << TIME_SAPI)); // set my services
+				token.stations[MYADDRESS-1] = gTokenInterface.station_list[MYADDRESS];
 				
 				
 				queueMsgPhyS.type = TO_PHY;			// message type
@@ -97,7 +98,7 @@ void MacSender(void *argument){
 									break;
 								
 								case STOP:
-									gTokenInterface.connected = true;
+									gTokenInterface.connected = false;
 									gTokenInterface.station_list[MYADDRESS] = ((0 << CHAT_SAPI) | (1 << TIME_SAPI)); // set my services
 									currentToken.stations[MYADDRESS-1] = ((0 << CHAT_SAPI) | (1 << TIME_SAPI));
 									break;
