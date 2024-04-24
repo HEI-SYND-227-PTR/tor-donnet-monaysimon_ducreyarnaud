@@ -118,3 +118,30 @@ struct queueMsg_t
 	uint8_t	addr;						///< the source or destination address
 	uint8_t sapi;						///< the source or destination SAPI
 };
+
+typedef struct __attribute__((__packed__)) msgType_{
+		union __attribute__((__packed__)){
+			struct __attribute__((__packed__)) control_{
+				unsigned srcSapi : 3;
+				unsigned src : 4;
+				unsigned blank1 : 1;
+				unsigned destSapi : 3;
+				unsigned dest : 4;
+				unsigned blank2 : 1;
+							
+			}__packed control;
+			uint16_t controlInt;
+		}__packed;
+		uint8_t length;
+		uint8_t data[];
+}msgType;
+
+
+typedef union msgStatus_{
+	struct __attribute__((__packed__)){
+		unsigned ack : 1;
+		unsigned read : 1;
+		unsigned checksum : 6;
+	};
+	uint8_t status;
+}msgStatus;

@@ -23,6 +23,8 @@ const osMessageQueueAttr_t queue_mac_buffer_attr = {
 osMessageQueueId_t  queue_mac_buffer_id;
 
 
+msgType* msgToSend;
+
 void MacSender(void *argument){
 	
 	
@@ -53,7 +55,7 @@ void MacSender(void *argument){
 					token.stations[i]= 0x00;
 				}
 				gTokenInterface.station_list[MYADDRESS] = ((1 << CHAT_SAPI) | (1 << TIME_SAPI)); // set my services
-				token.stations[MYADDRESS-1] = gTokenInterface.station_list[MYADDRESS];
+				token.stations[MYADDRESS] = gTokenInterface.station_list[MYADDRESS];
 				
 				
 				queueMsgPhyS.type = TO_PHY;			// message type
@@ -83,6 +85,11 @@ void MacSender(void *argument){
 			{		
 				currentToken = *((tokenType*)(queueMsgMacS.anyPtr)); // save the current token
 				
+				for(uint8_t i = 0; i<MAX_STATION_NB; i++){ // update token list
+					gTokenInterface.station_list[i] = currentToken.stations[i];
+				}
+				
+			
 				
 				struct queueMsg_t bufferedMessage;					// message in fifo
 				bool messageRead = false;
@@ -104,15 +111,76 @@ void MacSender(void *argument){
 									break;
 								
 								case DATA_IND:
-									//TODO
-								messageRead = true;
+								{	
+								
 									
+									msgToSend = osMemoryPoolAlloc(memPool, 0);
+									
+									// control
+									uint8_t srcSapi = bufferedMessage.sapi;
+									uint8_t src = MYADDRESS;
+									uint8_t destSapi = bufferedMessage.sapi;
+									uint8_t dest = bufferedMessage.addr;
+									
+									
+									uint8_t srcByte = 0x00;
+									srcByte = srcSapi | (src << 3);
+									
+									uint8_t destByte = 0x00;
+									destByte = destSapi | (dest << 3);
+									
+									msgToSend->controlInt = (((uint16_t)destByte << 8) | (srcByte));
+									
+									//lenght - data
+									uint8_t length = 0x00;
+									
+									uint8_t i = 0;
+									while(((uint8_t*)(bufferedMessage.anyPtr))[i] != 0x00){
+										msgToSend->data[length++] = ((uint8_t*)(bufferedMessage.anyPtr))[i++];
+									}
+									
+									msgToSend->length = length;
+									
+									// satuts
+									uint8_t sum = 0;
+									
+									for(uint8_t j = 0; j < (length + 2 + 1); j++){
+										sum += ((uint8_t*)&msgToSend)[j]; 
+									}
+									
+									uint8_t status = 0x00;
+									
+									status = sum << 2;
+									
+									msgToSend->data[length] = status;
+									
+									
+									
+									queueMsgPhyS.type = TO_PHY;			// message type
+									queueMsgPhyS.anyPtr = msgToSend;					// pointer to token
+									retCode = osMessageQueuePut(
+										queue_phyS_id,
+										&queueMsgPhyS,
+										osPriorityNormal,
+										osWaitForever);
+									CheckRetCode(retCode,__LINE__,__FILE__,CONTINUE);
+								
+								
+								
+								
+								
+									//TODO
+									messageRead = true;
+								}
 									break;
 								
 								
 								default:
 									break;
 							}
+							
+							
+							
 					}
 					else{
 						queueMsgPhyS.type = TO_PHY;			// message type
@@ -127,6 +195,16 @@ void MacSender(void *argument){
 						messageRead = true;
 					}
 				}
+				
+				//send token list
+				queueMsgPhyS.type = TOKEN_LIST;			// message type
+				retCode = osMessageQueuePut(
+					queue_lcd_id,
+					&queueMsgPhyS,
+					osPriorityNormal,
+					osWaitForever);
+				CheckRetCode(retCode,__LINE__,__FILE__,CONTINUE);
+				
 	
 			}
 				break;
