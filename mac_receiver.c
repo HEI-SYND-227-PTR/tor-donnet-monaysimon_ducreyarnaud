@@ -180,7 +180,7 @@ void MacReceiver(void *argument)
 					queueMsgToSend.sapi = msgRecieved->control.srcSapi;
 					
 					retCode = osMessageQueuePut( // send msg
-						queue_timeR_id,
+						queue_macS_id,
 						&queueMsgToSend,
 						osPriorityNormal,
 						osWaitForever);
