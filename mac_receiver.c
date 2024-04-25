@@ -148,7 +148,7 @@ void MacReceiver(void *argument)
 								
 								uint8_t * tempData = osMemoryPoolAlloc(memPool, 0);
 								
-								for(uint8_t i = 0; i < msgRecieved->length; i++){
+								for(uint8_t i = 0; i < msgRecieved->length; i++){ // bug ici
 									tempData[i] = msgRecieved->data[i];
 								}
 								tempData[msgRecieved->length] = '\0';

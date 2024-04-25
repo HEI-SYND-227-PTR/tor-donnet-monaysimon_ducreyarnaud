@@ -32,6 +32,11 @@ void MacSender(void *argument){
 	queue_mac_buffer_id = osMessageQueueNew(16,sizeof(struct queueMsg_t),&queue_mac_buffer_attr);
 	
 	
+	uint8_t chatSapi = 1;
+	uint8_t timeSapi = 1;
+	
+	uint8_t msgSendCount = 0;
+	
 	// TODO
 	while(1){
 		osStatus_t retCode;
@@ -85,6 +90,8 @@ void MacSender(void *argument){
 			{		
 				currentToken = (tokenType*)(queueMsgMacS.anyPtr); // save the current token
 				
+				
+				
 				for(uint8_t i = 0; i<MAX_STATION_NB; i++){ // update token list
 					gTokenInterface.station_list[i] = currentToken->stations[i];
 				}
@@ -100,14 +107,12 @@ void MacSender(void *argument){
 								
 								case START:
 										gTokenInterface.connected = true;
-										gTokenInterface.station_list[MYADDRESS] = ((1 << CHAT_SAPI) | (1 << TIME_SAPI)); // set my services
-										currentToken->stations[MYADDRESS-1] = gTokenInterface.station_list[MYADDRESS];
+										chatSapi = 1;
 									break;
 								
 								case STOP:
 									gTokenInterface.connected = false;
-									gTokenInterface.station_list[MYADDRESS] = ((0 << CHAT_SAPI) | (1 << TIME_SAPI)); // set my services
-									currentToken->stations[MYADDRESS-1] = gTokenInterface.station_list[MYADDRESS];
+										chatSapi = 0;
 									break;
 								
 								case DATA_IND:
@@ -200,6 +205,9 @@ void MacSender(void *argument){
 					}
 				}
 				
+				gTokenInterface.station_list[MYADDRESS] = ((chatSapi << CHAT_SAPI) | (timeSapi << TIME_SAPI)); // set my services
+				currentToken->stations[MYADDRESS] = gTokenInterface.station_list[MYADDRESS];
+				
 				//send token list
 				queueMsgPhyS.type = TOKEN_LIST;			// message type
 				retCode = osMessageQueuePut(
@@ -218,12 +226,12 @@ void MacSender(void *argument){
 				msgType *tempMsg = (msgType*)queueMsgMacS.anyPtr;
 				msgStatus *tempStatus = (msgStatus*)(&((tempMsg->data)[tempMsg->length]));
 			
-				if(tempStatus->ack == 0x1){
-					osMemoryPoolFree(memPool, msgToSend);
-					if(tempStatus->read == 0x0){
+				if(tempStatus->read == 0x0){
+					
+					if(tempStatus->ack == 0x1){
 						// send error message
 						char* errorString = osMemoryPoolAlloc(memPool, 0);
-						errorString = "ERORR MADAFAKAR\0";
+						errorString = "ERORR no sens\0";
 						
 						
 						queueMsgPhyS.type = MAC_ERROR;			// message type
@@ -236,8 +244,28 @@ void MacSender(void *argument){
 							osWaitForever);
 						CheckRetCode(retCode,__LINE__,__FILE__,CONTINUE);
 					}
+					else{
+						// send error message
+						char* errorString = osMemoryPoolAlloc(memPool, 0);
+						errorString = "ERORR nobody here\0";
+						
+						
+						queueMsgPhyS.type = MAC_ERROR;			// message type
+						queueMsgPhyS.anyPtr = errorString;	// pointer to token
+						queueMsgPhyS.addr = MYADDRESS+1;
+						retCode = osMessageQueuePut(
+							queue_lcd_id,
+							&queueMsgPhyS,
+							osPriorityNormal,
+							osWaitForever);
+						CheckRetCode(retCode,__LINE__,__FILE__,CONTINUE);
+						
+						
+						
+					
 					
 					// send back token
+					osMemoryPoolFree(memPool, tempMsg);
 					queueMsgPhyS.type = TO_PHY;			// message type
 					queueMsgPhyS.anyPtr = &(currentToken->token_data);					// pointer to token
 					retCode = osMessageQueuePut(
@@ -246,20 +274,68 @@ void MacSender(void *argument){
 						osPriorityNormal,
 						osWaitForever);
 					CheckRetCode(retCode,__LINE__,__FILE__,CONTINUE);
+						
+					}
 					
+						
 				}
-				else {
+				else{
+					if(tempStatus->ack == 0x1){
+						// send back token
+					osMemoryPoolFree(memPool, tempMsg);
 					queueMsgPhyS.type = TO_PHY;			// message type
-					queueMsgPhyS.anyPtr = msgToSend;					// pointer to token
+					queueMsgPhyS.anyPtr = &(currentToken->token_data);					// pointer to token
 					retCode = osMessageQueuePut(
 						queue_phyS_id,
 						&queueMsgPhyS,
 						osPriorityNormal,
 						osWaitForever);
 					CheckRetCode(retCode,__LINE__,__FILE__,CONTINUE);
+					}
+					else{
+						
+						if(msgSendCount <= 3){
+							queueMsgPhyS.type = TO_PHY;			// message type
+							queueMsgPhyS.anyPtr = msgToSend;					// pointer to token
+							retCode = osMessageQueuePut(
+								queue_phyS_id,
+								&queueMsgPhyS,
+								osPriorityNormal,
+								osWaitForever);
+							CheckRetCode(retCode,__LINE__,__FILE__,CONTINUE);
+							msgSendCount++;
+						}
+						else{
+							// send error message
+							char* errorString = osMemoryPoolAlloc(memPool, 0);
+							errorString = "ERORR msg sent 3x\0";
+							
+							
+							queueMsgPhyS.type = MAC_ERROR;			// message type
+							queueMsgPhyS.anyPtr = errorString;	// pointer to token
+							queueMsgPhyS.addr = MYADDRESS+1;
+							retCode = osMessageQueuePut(
+								queue_lcd_id,
+								&queueMsgPhyS,
+								osPriorityNormal,
+								osWaitForever);
+							CheckRetCode(retCode,__LINE__,__FILE__,CONTINUE);
+							
+								// send back token
+							osMemoryPoolFree(memPool, tempMsg);
+							queueMsgPhyS.type = TO_PHY;			// message type
+							queueMsgPhyS.anyPtr = &(currentToken->token_data);					// pointer to token
+							retCode = osMessageQueuePut(
+								queue_phyS_id,
+								&queueMsgPhyS,
+								osPriorityNormal,
+								osWaitForever);
+							CheckRetCode(retCode,__LINE__,__FILE__,CONTINUE);
+							msgSendCount = 0;
+						}
+						
+					}
 				}
-
-				
 				
 			}
 				break;
