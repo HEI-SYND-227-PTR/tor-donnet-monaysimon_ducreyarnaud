@@ -18,7 +18,7 @@
 //--------------------------------------------------------------------------------
 #define DEBUG_MODE				0					// mode is physical line (0) or debug (1)
 #define MYADDRESS   			11					// your address choice (table number)
-#define MAX_BLOCK_SIZE 		100				// size max for a frame
+#define MAX_BLOCK_SIZE 		250				// size max for a frame
 
 //--------------------------------------------------------------------------------
 // Constants to NOT change for the system working
@@ -119,6 +119,8 @@ struct queueMsg_t
 	uint8_t sapi;						///< the source or destination SAPI
 };
 
+
+// Used to work with a message frame
 typedef struct __attribute__((__packed__)) msgType_{
 		union __attribute__((__packed__)){
 			struct __attribute__((__packed__)) control_{
@@ -137,6 +139,7 @@ typedef struct __attribute__((__packed__)) msgType_{
 }msgType;
 
 
+//Used to handle the status byte of a message frame
 typedef union msgStatus_{
 	struct __attribute__((__packed__)){
 		unsigned ack : 1;

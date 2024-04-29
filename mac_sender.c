@@ -6,6 +6,7 @@
 #include "main.h"
 #include "cmsis_os2.h" 
 
+//Used to work with a token frame
 typedef union tokenType_{
 	struct __attribute__((__packed__)){
 		uint8_t token_id;
@@ -28,16 +29,16 @@ msgType* msgToSend;
 void MacSender(void *argument){
 	
 	
-	
-	queue_mac_buffer_id = osMessageQueueNew(16,sizeof(struct queueMsg_t),&queue_mac_buffer_attr);
-	
+	//buffer queue to wait the token
+	queue_mac_buffer_id = osMessageQueueNew(4,sizeof(struct queueMsg_t),&queue_mac_buffer_attr);	
 	
 	uint8_t chatSapi = 1;
 	uint8_t timeSapi = 1;
 	
+	// Used if we send a message with a bad crc
 	uint8_t msgSendCount = 0;
 	
-	// TODO
+
 	while(1){
 		osStatus_t retCode;
 		
@@ -53,15 +54,12 @@ void MacSender(void *argument){
 			{
 				tokenType* token = osMemoryPoolAlloc(memPool,0);
 				token->token_id = TOKEN_TAG;
-				
-				
-				
+							
 				for(int i = 0; i<MAX_STATION_NB; i++){ // init all stations
 					token->stations[i]= 0x00;
 				}
 				gTokenInterface.station_list[MYADDRESS] = ((1 << CHAT_SAPI) | (1 << TIME_SAPI)); // set my services
-				token->stations[MYADDRESS] = gTokenInterface.station_list[MYADDRESS];
-				
+				token->stations[MYADDRESS] = gTokenInterface.station_list[MYADDRESS];				
 				
 				queueMsgPhyS.type = TO_PHY;			// message type
 				queueMsgPhyS.anyPtr = &(token->token_data);					// pointer to token
@@ -84,20 +82,20 @@ void MacSender(void *argument){
 					osPriorityNormal,
 					0);
 				CheckRetCode(retCode,__LINE__,__FILE__,CONTINUE);
+				// Free memPool if there's to many messages in the buffer queue
+				if (retCode != osOK){
+					osMemoryPoolFree(memPool, queueMsgMacS.anyPtr);
+				}
 				break;
 			
 			case TOKEN:
 			{		
-				currentToken = (tokenType*)(queueMsgMacS.anyPtr); // save the current token
-				
-				
+				currentToken = (tokenType*)(queueMsgMacS.anyPtr); // save the current token			
 				
 				for(uint8_t i = 0; i<MAX_STATION_NB; i++){ // update token list
 					gTokenInterface.station_list[i] = currentToken->stations[i];
 				}
-				
-			
-				
+					
 				struct queueMsg_t bufferedMessage;					// message in fifo
 				bool messageRead = false;
 				while(!messageRead){
@@ -117,9 +115,7 @@ void MacSender(void *argument){
 								
 								case DATA_IND:
 								{	
-								
-									
-									
+																
 									msgToSend = osMemoryPoolAlloc(memPool, 0);
 									
 									// control
@@ -127,8 +123,7 @@ void MacSender(void *argument){
 									uint8_t src = MYADDRESS;
 									uint8_t destSapi = bufferedMessage.sapi;
 									uint8_t dest = bufferedMessage.addr;
-									
-									
+																	
 									uint8_t srcByte = 0x00;
 									srcByte = srcSapi | (src << 3);
 									
@@ -165,30 +160,23 @@ void MacSender(void *argument){
 									}
 									
 									msgToSend->data[length] = status;
-									
-									
-									
+																	
 									queueMsgPhyS.type = TO_PHY;			// message type
-									queueMsgPhyS.anyPtr = msgToSend;					// pointer to token
+									queueMsgPhyS.anyPtr = msgToSend;					// pointer to the message
 									retCode = osMessageQueuePut(
 										queue_phyS_id,
 										&queueMsgPhyS,
 										osPriorityNormal,
 										osWaitForever);
 									CheckRetCode(retCode,__LINE__,__FILE__,CONTINUE);
-								
-								
-							
+
 									messageRead = true;
 								}
 									break;
-								
-								
+		
 								default:
 									break;
 							}
-							
-							
 							
 					}
 					else{
@@ -206,7 +194,7 @@ void MacSender(void *argument){
 				}
 				
 				gTokenInterface.station_list[MYADDRESS] = ((chatSapi << CHAT_SAPI) | (timeSapi << TIME_SAPI)); // set my services
-				currentToken->stations[MYADDRESS] = gTokenInterface.station_list[MYADDRESS];
+				currentToken->stations[MYADDRESS] = gTokenInterface.station_list[MYADDRESS]; // Update the stations list
 				
 				//send token list
 				queueMsgPhyS.type = TOKEN_LIST;			// message type
@@ -229,13 +217,14 @@ void MacSender(void *argument){
 				if(tempStatus->read == 0x0){
 					
 					if(tempStatus->ack == 0x1){
-						// send error message
+						// send error message this case shouldn't append
 						char* errorString = osMemoryPoolAlloc(memPool, 0);
-						errorString = "ERORR no sens\0";
 						
+						char tempString[MAX_BLOCK_SIZE] = "ERORR no sens\r\n\0";
+						memcpy(errorString,tempString,MAX_BLOCK_SIZE);
 						
 						queueMsgPhyS.type = MAC_ERROR;			// message type
-						queueMsgPhyS.anyPtr = errorString;	// pointer to token
+						queueMsgPhyS.anyPtr = errorString;	// pointer to msg
 						queueMsgPhyS.addr = MYADDRESS+1;
 						retCode = osMessageQueuePut(
 							queue_lcd_id,
@@ -245,25 +234,23 @@ void MacSender(void *argument){
 						CheckRetCode(retCode,__LINE__,__FILE__,CONTINUE);
 					}
 					else{
-						// send error message
+						// send error message when the station isn't connected
 						char* errorString = osMemoryPoolAlloc(memPool, 0);
-						errorString = "ERORR nobody here\0";
 						
+						char tempString[MAX_BLOCK_SIZE] = "ERORR nobody here\r\n\0";
+						memcpy(errorString,tempString,MAX_BLOCK_SIZE);
 						
 						queueMsgPhyS.type = MAC_ERROR;			// message type
-						queueMsgPhyS.anyPtr = errorString;	// pointer to token
+						queueMsgPhyS.anyPtr = errorString;	// pointer to msg
 						queueMsgPhyS.addr = MYADDRESS+1;
 						retCode = osMessageQueuePut(
 							queue_lcd_id,
 							&queueMsgPhyS,
 							osPriorityNormal,
 							osWaitForever);
-						CheckRetCode(retCode,__LINE__,__FILE__,CONTINUE);
-						
-						
-						
-					
-					
+						CheckRetCode(retCode,__LINE__,__FILE__,CONTINUE);					
+					}	
+	
 					// send back token
 					osMemoryPoolFree(memPool, tempMsg);
 					queueMsgPhyS.type = TO_PHY;			// message type
@@ -273,15 +260,11 @@ void MacSender(void *argument){
 						&queueMsgPhyS,
 						osPriorityNormal,
 						osWaitForever);
-					CheckRetCode(retCode,__LINE__,__FILE__,CONTINUE);
-						
-					}
-					
-						
+					CheckRetCode(retCode,__LINE__,__FILE__,CONTINUE);				
 				}
 				else{
 					if(tempStatus->ack == 0x1){
-						// send back token
+						// send back token the message was successfully send
 					osMemoryPoolFree(memPool, tempMsg);
 					queueMsgPhyS.type = TO_PHY;			// message type
 					queueMsgPhyS.anyPtr = &(currentToken->token_data);					// pointer to token
@@ -292,8 +275,7 @@ void MacSender(void *argument){
 						osWaitForever);
 					CheckRetCode(retCode,__LINE__,__FILE__,CONTINUE);
 					}
-					else{
-						
+					else{						
 						if(msgSendCount <= 3){
 							queueMsgPhyS.type = TO_PHY;			// message type
 							queueMsgPhyS.anyPtr = msgToSend;					// pointer to token
@@ -308,9 +290,10 @@ void MacSender(void *argument){
 						else{
 							// send error message
 							char* errorString = osMemoryPoolAlloc(memPool, 0);
-							errorString = "ERORR msg sent 3x\0";
 							
-							
+							char tempString[MAX_BLOCK_SIZE] = "ERORR msg sent 3x\r\n\0";
+							memcpy(errorString,tempString,MAX_BLOCK_SIZE);
+	
 							queueMsgPhyS.type = MAC_ERROR;			// message type
 							queueMsgPhyS.anyPtr = errorString;	// pointer to token
 							queueMsgPhyS.addr = MYADDRESS+1;
@@ -333,16 +316,13 @@ void MacSender(void *argument){
 							CheckRetCode(retCode,__LINE__,__FILE__,CONTINUE);
 							msgSendCount = 0;
 						}
-						
 					}
-				}
-				
+				}	
 			}
 				break;
 			
 			default:
 				break;
 		}
-	}
-	
+	}	
 }

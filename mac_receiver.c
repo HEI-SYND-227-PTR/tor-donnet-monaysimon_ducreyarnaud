@@ -116,10 +116,8 @@ void MacReceiver(void *argument)
 					
 					if(((1 << msgRecieved->control.destSapi) & gTokenInterface.station_list[MYADDRESS])>0){
 						msgRecieved->data[msgRecieved->length] |= gTokenInterface.connected << 1; // READ <= connected
-					}
-					
-					
-					
+					}					
+		
 					if(processChecksum(msgRecieved)){
 						msgRecieved->data[msgRecieved->length] |= 1; // ACK <= 1
 						// message to us

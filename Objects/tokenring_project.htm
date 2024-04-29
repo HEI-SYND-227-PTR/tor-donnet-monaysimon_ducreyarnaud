@@ -3,7 +3,7 @@
 <title>Static Call Graph - [.\Objects\tokenring_project.axf]</title></head>
 <body><HR>
 <H1>Static Call Graph for image .\Objects\tokenring_project.axf</H1><HR>
-<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 5060960: Last Updated: Thu Apr 25 21:24:21 2024
+<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 5060960: Last Updated: Mon Apr 29 15:02:33 2024
 <BR><P>
 <H3>Maximum Stack Usage =        576 bytes + Unknown(Functions without stacksize, Cycles, Untraceable Function Pointers)</H3><H3>
 Call chain for Maximum Stack Depth:</H3>
@@ -1197,6 +1197,7 @@ Global Symbols
 <LI><a href="#[34a]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;isrRtxMessageQueueGet
 <LI><a href="#[97]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;PhSender
 <LI><a href="#[96]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;PhReceiver
+<LI><a href="#[99]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;MacSender
 <LI><a href="#[95]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;DebugStation
 <LI><a href="#[9d]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;ChatSender
 <LI><a href="#[f6]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;ROMRead
@@ -1211,7 +1212,8 @@ Global Symbols
 <P><STRONG><a name="[14e]"></a>__aeabi_memcpy4</STRONG> (Thumb, 0 bytes, Stack size 8 bytes, rt_memcpy_w.o(.text))
 <BR><BR>[Stack]<UL><LI>Max Depth = 8<LI>Call Chain = __aeabi_memcpy4
 </UL>
-<BR>[Called By]<UL><LI><a href="#[95]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;DebugStation
+<BR>[Called By]<UL><LI><a href="#[99]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;MacSender
+<LI><a href="#[95]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;DebugStation
 <LI><a href="#[30d]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;mf_wordwrap
 <LI><a href="#[14d]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__rt_memcpy
 </UL>
@@ -3176,8 +3178,8 @@ Global Symbols
 </UL>
 <BR>[Address Reference Count : 1]<UL><LI> main.o(i.main)
 </UL>
-<P><STRONG><a name="[99]"></a>MacSender</STRONG> (Thumb, 1224 bytes, Stack size 64 bytes, mac_sender.o(i.MacSender))
-<BR><BR>[Stack]<UL><LI>Max Depth = 256 + Unknown Stack Size
+<P><STRONG><a name="[99]"></a>MacSender</STRONG> (Thumb, 1260 bytes, Stack size 288 bytes, mac_sender.o(i.MacSender))
+<BR><BR>[Stack]<UL><LI>Max Depth = 480 + Unknown Stack Size
 <LI>Call Chain = MacSender &rArr; CheckRetCode &rArr; __2printf &rArr; _printf_char_file &rArr; _mutex_release &rArr; os_kernel_is_active &rArr; osKernelGetState &rArr; svcRtxKernelGetState &rArr; EvrRtxKernelGetState &rArr; EventRecord2 &rArr; EventRecordItem
 </UL>
 <BR>[Calls]<UL><LI><a href="#[1a0]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;osMemoryPoolAlloc
@@ -3186,6 +3188,8 @@ Global Symbols
 <LI><a href="#[1a8]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;osMemoryPoolFree
 <LI><a href="#[278]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;osMessageQueueNew
 <LI><a href="#[18b]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;CheckRetCode
+<LI><a href="#[14e]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_memcpy4
+<LI><a href="#[1a2]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_memcpy
 </UL>
 <BR>[Address Reference Count : 1]<UL><LI> main.o(i.main)
 </UL>
