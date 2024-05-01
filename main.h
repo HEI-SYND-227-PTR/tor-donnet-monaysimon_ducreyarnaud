@@ -16,9 +16,9 @@
 //--------------------------------------------------------------------------------
 // Constants to change the system behavior
 //--------------------------------------------------------------------------------
-#define DEBUG_MODE				1					// mode is physical line (0) or debug (1)
-#define MYADDRESS   			3					// your address choice (table number)
-#define MAX_BLOCK_SIZE 		100				// size max for a frame
+#define DEBUG_MODE				0					// mode is physical line (0) or debug (1)
+#define MYADDRESS   			11					// your address choice (table number)
+#define MAX_BLOCK_SIZE 		250				// size max for a frame
 
 //--------------------------------------------------------------------------------
 // Constants to NOT change for the system working
@@ -28,6 +28,7 @@
 #define BROADCAST_ADDRESS	0x0F			// broadcast address
 #define TOKEN_TAG					0xFF			// tag of tokenring frame
 #define TOKENSIZE					19				// size of a token frame
+#define MAX_STATION_NB		15				// max number of station in the ring
 #define STX 							0x02			// any frame start char
 #define ETX								0x03			// any frame end char
 #define CONTINUE					0x0				// for check return code halt
@@ -73,7 +74,7 @@ struct TOKENINTERFACE
 	uint32_t	debugAddress;					///< current debug address
 	bool_t		debugMsgToSend;				///< did debug have to send a message
 	uint32_t	destinationAddress;		///< current destination address
-	uint8_t		station_list[15];			///< 0 to 15
+	uint8_t		station_list[MAX_STATION_NB];			///< 0 to 15
 };
 extern struct TOKENINTERFACE gTokenInterface;
 
@@ -117,3 +118,33 @@ struct queueMsg_t
 	uint8_t	addr;						///< the source or destination address
 	uint8_t sapi;						///< the source or destination SAPI
 };
+
+
+// Used to work with a message frame
+typedef struct __attribute__((__packed__)) msgType_{
+		union __attribute__((__packed__)){
+			struct __attribute__((__packed__)) control_{
+				unsigned srcSapi : 3;
+				unsigned src : 4;
+				unsigned blank1 : 1;
+				unsigned destSapi : 3;
+				unsigned dest : 4;
+				unsigned blank2 : 1;
+							
+			}__packed control;
+			uint16_t controlInt;
+		}__packed;
+		uint8_t length;
+		uint8_t data[];
+}msgType;
+
+
+//Used to handle the status byte of a message frame
+typedef union msgStatus_{
+	struct __attribute__((__packed__)){
+		unsigned ack : 1;
+		unsigned read : 1;
+		unsigned checksum : 6;
+	};
+	uint8_t status;
+}msgStatus;

@@ -340,9 +340,9 @@ uint32_t HAL_GetTick(void)
 //////////////////////////////////////////////////////////////////////////////////
 /// \brief Init all and start RTX5
 //////////////////////////////////////////////////////////////////////////////////
-int main(void)
+int main(void) 
 {
-	SystemClock_Config();
+	SystemClock_Config(); 
 
 	EventRecorderInitialize(EventRecordAll,0);
 	EventRecorderDisable(EventRecordAPI, 0xF1, 0xF1); // remove Kernel messages
@@ -391,7 +391,7 @@ int main(void)
 	//------------------------------------------------------------------------------
 	// Create Threads
 	//------------------------------------------------------------------------------
-  // audio_id = osThreadNew(AudioPlayer, NULL, &audio_attr);
+  audio_id = osThreadNew(AudioPlayer, NULL, &audio_attr);
   debug_id = osThreadNew(DebugStation, NULL, &debug_attr);
   phy_rec_id = osThreadNew(PhReceiver, NULL, &phy_rec_attr);
   phy_snd_id = osThreadNew(PhSender, NULL, &phy_snd_attr);
